@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysqlsrv:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "salas"
+    ports:
+      - 3306:3306
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - app-network
+
+  front:
+    build: ./projeto-sala-de-reunioes-frontend
+    environment:
+      API_URL: "192.168.1.69"
+    ports:
+      - 82:80
+    networks:
+      - app-network
+
+  spring-app:
+    image: openjdk:11
+    volumes:
+      - type: bind
+        source: ./projeto-sala-de-reunioes-backend/target
+        target: /usr/src/myapp
+    working_dir: /usr/src/myapp
+    command: java -jar saladereuniao-0.0.1-SNAPSHOT.jar
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      DB: "mysql"
+      DB_HOST: mysqlsrv
+      DB_DATABASE: "salas"
+      DB_USERNAME: "root"
+      DB_PASSWORD: "root"
+    depends_on:
+      mysqlsrv:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
